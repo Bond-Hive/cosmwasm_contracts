@@ -10,19 +10,26 @@ fn instantiate() {
     let app = App::default();
     let code_id = CodeId::store_code(&app);
 
-    let owner = "owner".into_addr();
-    let cw20_token = "cw20_token".into_addr();
+    // Use valid Bech32-compliant addresses
+    let owner = "cosmos1w2kvwrzp23aq54n3amwav4yy4a9ahq2kz2wtmr".into_addr();
+    let cw_20_token = "cosmos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9v5e0h".into_addr();
 
+    println!("Owner: {:?}, CW20 Token: {:?}", owner, cw_20_token);
+
+    // Instantiate the contract
     let contract = code_id
-        .instantiate(42, cw20_token.to_string())
+        .instantiate(42, cw_20_token.to_string())
         .call(&owner)
         .unwrap();
 
+    // Verify the stored count
     let count = contract.count().unwrap().count;
     assert_eq!(count, 42);
 
-    let stored_token = contract.cw_20_address().unwrap().cw20_address;
-    assert_eq!(stored_token, cw20_token);
+    // Verify the stored CW20 token address
+    let stored_token = contract.cw_20_address().unwrap().cw_20_address;
+    println!("Stored CW20 token address: {:?}", stored_token);
+    assert_eq!(stored_token, cw_20_token);
 }
 
 #[test]
@@ -31,10 +38,10 @@ fn decrement_below_zero() {
     let code_id = CodeId::store_code(&app);
 
     let owner = "owner".into_addr();
-    let cw20_token = "cw20_token".into_addr();
+    let cw_20_token = "cw20_token".into_addr();
 
     let contract = code_id
-        .instantiate(1, cw20_token.to_string())
+        .instantiate(1, cw_20_token.to_string())
         .call(&owner)
         .unwrap();
 
@@ -57,9 +64,9 @@ fn manage_admins() {
 
     let owner = "owner".into_addr();
     let admin = "admin".into_addr();
-    let cw20_token = "cw20_token".into_addr();
+    let cw_20_token = "cw20_token".into_addr();
 
-    let contract = code_id.instantiate(1, cw20_token.to_string())
+    let contract = code_id.instantiate(1, cw_20_token.to_string())
     .call(&owner).unwrap();
 
     // Admins list is empty

@@ -13,5 +13,5 @@ pub struct AdminsResponse {
 
 #[cw_serde]
 pub struct Cw20AddressResponse {
-    pub cw20_address: Addr,
+    pub cw_20_address: Addr,
 }

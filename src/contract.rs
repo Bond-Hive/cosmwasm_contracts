@@ -10,13 +10,13 @@ use sylvia::{contract, entry_points};
 pub struct CounterContract {
     pub(crate) count: Item<u32>,
     pub(crate) admins: Map<Addr, ()>,
-    pub(crate) cw20_address: Item<Addr>, // Store the address directly
+    pub(crate) cw_20_address: Item<Addr>,
 }
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub count: u32,
-    pub cw20_token_address: String,
+    pub cw_20_token_address: String,
 }
 
 #[entry_points]
@@ -28,7 +28,7 @@ impl CounterContract {
         Self {
             count: Item::new("count"),
             admins: Map::new("admins"),
-            cw20_address: Item::new("cw20_address"),
+            cw_20_address: Item::new("cw_20_address"),
         }
     }
 
@@ -37,19 +37,19 @@ impl CounterContract {
         &self,
         ctx: InstantiateCtx,
         count: u32,
-        cw20_token_address: String,
+        cw_20_token_address: String,
     ) -> Result<Response, ContractError> {
         // Save initial count
         self.count.save(ctx.deps.storage, &count)?;
 
         // Validate and save the CW20 token address
-        let validated_addr = ctx.deps.api.addr_validate(&cw20_token_address)?;
-        self.cw20_address.save(ctx.deps.storage, &validated_addr)?;
+        let validated_addr = ctx.deps.api.addr_validate(&cw_20_token_address)?;
+        self.cw_20_address.save(ctx.deps.storage, &validated_addr)?;
 
         Ok(Response::new()
             .add_attribute("method", "instantiate")
             .add_attribute("count", count.to_string())
-            .add_attribute("cw20_token_address", cw20_token_address))
+            .add_attribute("cw_20_token_address", cw_20_token_address))
     }
 
     #[sv::msg(query)]
@@ -59,9 +59,9 @@ impl CounterContract {
     }
 
     #[sv::msg(query)]
-    pub fn cw20_address(&self, ctx: QueryCtx) -> StdResult<Cw20AddressResponse> {
-        let cw20_address = self.cw20_address.load(ctx.deps.storage)?;
-        Ok(Cw20AddressResponse { cw20_address })
+    pub fn cw_20_address(&self, ctx: QueryCtx) -> StdResult<Cw20AddressResponse> {
+        let cw_20_address = self.cw_20_address.load(ctx.deps.storage)?;
+        Ok(Cw20AddressResponse { cw_20_address })
     }
 
     #[sv::msg(exec)]
@@ -71,14 +71,14 @@ impl CounterContract {
                 Ok(count + 1)
             })?;
 
-        let cw20_address = self.cw20_address.load(ctx.deps.storage)?;
+        let cw_20_address = self.cw_20_address.load(ctx.deps.storage)?;
         let mint_msg = Cw20ExecuteMsg::Mint {
             recipient: ctx.info.sender.to_string(),
             amount: Uint128::from(100u128), // Fixed: using Uint128
         };
 
         let wasm_msg = WasmMsg::Execute {
-            contract_addr: cw20_address.to_string(),
+            contract_addr: cw_20_address.to_string(),
             msg: to_json_binary(&mint_msg)?,
             funds: vec![],
         };
