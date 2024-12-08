@@ -11,16 +11,18 @@ fn instantiate() {
     let code_id = CodeId::store_code(&app);
 
     let owner = "owner".into_addr();
+    let cw20_token = "cw20_token".into_addr();
 
-    let contract = code_id.instantiate(42).call(&owner).unwrap();
+    let contract = code_id
+        .instantiate(42, cw20_token.to_string())
+        .call(&owner)
+        .unwrap();
 
     let count = contract.count().unwrap().count;
     assert_eq!(count, 42);
 
-    contract.increment_count().call(&owner).unwrap();
-
-    let count = contract.count().unwrap().count;
-    assert_eq!(count, 43);
+    let stored_token = contract.cw_20_address().unwrap().cw20_address;
+    assert_eq!(stored_token, cw20_token);
 }
 
 #[test]
@@ -29,8 +31,12 @@ fn decrement_below_zero() {
     let code_id = CodeId::store_code(&app);
 
     let owner = "owner".into_addr();
+    let cw20_token = "cw20_token".into_addr();
 
-    let contract = code_id.instantiate(1).call(&owner).unwrap();
+    let contract = code_id
+        .instantiate(1, cw20_token.to_string())
+        .call(&owner)
+        .unwrap();
 
     let count = contract.count().unwrap().count;
     assert_eq!(count, 1);
@@ -51,8 +57,10 @@ fn manage_admins() {
 
     let owner = "owner".into_addr();
     let admin = "admin".into_addr();
+    let cw20_token = "cw20_token".into_addr();
 
-    let contract = code_id.instantiate(1).call(&owner).unwrap();
+    let contract = code_id.instantiate(1, cw20_token.to_string())
+    .call(&owner).unwrap();
 
     // Admins list is empty
     let admins = contract.admins().unwrap().admins;

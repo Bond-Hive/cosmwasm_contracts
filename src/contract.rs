@@ -1,13 +1,11 @@
-use cosmwasm_std::{Addr, Response, StdResult, SubMsg, WasmMsg, to_json_binary, Uint128};
-use cw_storage_plus::{Item, Map};
-use sylvia::ctx::{InstantiateCtx, QueryCtx, ExecCtx};
-use sylvia::{contract, entry_points};
-use cw20::Cw20ExecuteMsg;
-use serde::{Serialize, Deserialize};
-use cw20::{Cw20Coin, MinterResponse};
-
 use crate::error::ContractError;
 use crate::responses::{CountResponse, Cw20AddressResponse};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{to_json_binary, Addr, Response, StdResult, Uint128, WasmMsg};
+use cw20::Cw20ExecuteMsg;
+use cw_storage_plus::{Item, Map};
+use sylvia::ctx::{ExecCtx, InstantiateCtx, QueryCtx};
+use sylvia::{contract, entry_points};
 
 pub struct CounterContract {
     pub(crate) count: Item<u32>,
@@ -15,13 +13,10 @@ pub struct CounterContract {
     pub(crate) cw20_address: Item<Addr>, // Store the address directly
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct TokenInstantiateMsg {
-    pub name: String,
-    pub symbol: String,
-    pub decimals: u8,
-    pub initial_balances: Vec<Cw20Coin>,
-    pub mint: Option<MinterResponse>,
+#[cw_serde]
+pub struct InstantiateMsg {
+    pub count: u32,
+    pub cw20_token_address: String,
 }
 
 #[entry_points]
@@ -38,9 +33,23 @@ impl CounterContract {
     }
 
     #[sv::msg(instantiate)]
-    pub fn instantiate(&self, ctx: InstantiateCtx, count: u32) -> StdResult<Response> {
+    pub fn instantiate(
+        &self,
+        ctx: InstantiateCtx,
+        count: u32,
+        cw20_token_address: String,
+    ) -> Result<Response, ContractError> {
+        // Save initial count
         self.count.save(ctx.deps.storage, &count)?;
-        Ok(Response::new().add_attribute("method", "instantiate"))
+
+        // Validate and save the CW20 token address
+        let validated_addr = ctx.deps.api.addr_validate(&cw20_token_address)?;
+        self.cw20_address.save(ctx.deps.storage, &validated_addr)?;
+
+        Ok(Response::new()
+            .add_attribute("method", "instantiate")
+            .add_attribute("count", count.to_string())
+            .add_attribute("cw20_token_address", cw20_token_address))
     }
 
     #[sv::msg(query)]
@@ -52,50 +61,15 @@ impl CounterContract {
     #[sv::msg(query)]
     pub fn cw20_address(&self, ctx: QueryCtx) -> StdResult<Cw20AddressResponse> {
         let cw20_address = self.cw20_address.load(ctx.deps.storage)?;
-        Ok(Cw20AddressResponse {
-            cw20_address,
-        })
-    }
-
-    #[sv::msg(exec)]
-    pub fn deploy_cw20(
-        &self,
-        ctx: ExecCtx,
-        token_name: String,
-        token_symbol: String,
-    ) -> StdResult<Response> {
-        let instantiate_msg = TokenInstantiateMsg {
-            name: token_name,
-            symbol: token_symbol,
-            decimals: 6,
-            initial_balances: vec![],
-            mint: Some(MinterResponse {
-                minter: ctx.info.sender.to_string(),
-                cap: None,
-            }),
-        };
-
-        let wasm_msg = WasmMsg::Instantiate {
-            admin: Some(ctx.info.sender.to_string()),
-            code_id: 1, // Replace with actual CW20 code ID
-            msg: to_json_binary(&instantiate_msg)?,
-            funds: vec![],
-            label: "CW20 Token Deployment".to_string(),
-        };
-
-        let sub_msg = SubMsg::new(wasm_msg);
-
-        // Save address later in the reply handler
-        Ok(Response::new()
-            .add_submessage(sub_msg)
-            .add_attribute("action", "deploy_cw20"))
+        Ok(Cw20AddressResponse { cw20_address })
     }
 
     #[sv::msg(exec)]
     pub fn increment_count(&self, ctx: ExecCtx) -> StdResult<Response> {
-        self.count.update(ctx.deps.storage, |count| -> StdResult<u32> {
-            Ok(count + 1)
-        })?;
+        self.count
+            .update(ctx.deps.storage, |count| -> StdResult<u32> {
+                Ok(count + 1)
+            })?;
 
         let cw20_address = self.cw20_address.load(ctx.deps.storage)?;
         let mint_msg = Cw20ExecuteMsg::Mint {
